@@ -827,6 +827,21 @@ nav::-webkit-scrollbar { display:none; }
 
   <div class="export-card">
     <div class="export-label">
+      ☁️ Sync to Cloud
+      <span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--dim);">your sync code</span>
+    </div>
+    <div style="padding:14px;">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+        <div id="syncCodeDisplay" style="font-family:'Bebas Neue',cursive;font-size:24px;letter-spacing:3px;color:var(--lime);padding:8px 14px;background:var(--s2);border-radius:5px;flex:1;text-align:center;">—</div>
+        <button class="copy-btn" onclick="copySyncCode()" id="syncCopyBtn">copy</button>
+      </div>
+      <button class="save-btn" style="margin-top:0;width:100%;" onclick="syncToCloud()" id="syncBtn">📤 Sync Today's Data to Cloud</button>
+      <div id="syncStatus" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);margin-top:8px;text-align:center;"></div>
+    </div>
+  </div>
+
+  <div class="export-card">
+    <div class="export-label">
       Today's Summary
       <button class="copy-btn" id="copyBtn" onclick="copyExport()">copy</button>
     </div>
@@ -834,7 +849,8 @@ nav::-webkit-scrollbar { display:none; }
   </div>
 
   <div class="info-card" style="font-size:11px; line-height:1.7;">
-    💡 Paste this into any new Claude chat and ask: <span style="color:var(--lime);">"Based on this data, what should I focus on today?"</span> — or use the built-in AI Advisor tab for real-time responses.
+    💡 <strong style="color:var(--lime);">For Claude chats:</strong> After syncing, just tell Claude your sync code and ask "load my Health OS data" — Claude can fetch your latest data directly.<br><br>
+    Or paste the Today's Summary above into any new Claude chat manually.
   </div>
 </div>
 
@@ -1514,11 +1530,51 @@ function renderAdvisor(){
   const qp=document.getElementById('quickPrompts');
   if(qp) qp.innerHTML=QUICK_PROMPTS.map(p=>`<button class="qp-btn" onclick="sendQuick('${p}')">${p}</button>`).join('');
   initOura();
+  checkApiKey();
+}
+
+function getAnthropicKey(){ try{ return localStorage.getItem('hos_anthropic_key')||''; }catch(e){return '';} }
+function setAnthropicKey(k){ try{ localStorage.setItem('hos_anthropic_key',k); }catch(e){} }
+
+function checkApiKey(){
+  const key=getAnthropicKey();
+  if(!key){
+    const messages=document.getElementById('chatMessages');
+    if(messages && !document.getElementById('apiKeyPrompt')){
+      const div=document.createElement('div');
+      div.id='apiKeyPrompt';
+      div.className='msg ai';
+      div.innerHTML=`<div class="msg-sender">SETUP</div>
+        <div class="msg-bubble" style="border-color:rgba(255,184,77,0.3);">
+          <div style="color:var(--amber);font-family:'DM Mono',monospace;font-size:11px;margin-bottom:8px;">⚙️ ANTHROPIC API KEY REQUIRED</div>
+          <div style="font-size:12px;color:var(--dim2);margin-bottom:10px;line-height:1.6;">Enter your API key from console.anthropic.com — saved locally, never shared.</div>
+          <div style="display:flex;gap:8px;">
+            <input id="apiKeyInput" type="password" class="oura-token-input" placeholder="sk-ant-..." style="flex:1;">
+            <button class="save-btn" style="margin-top:0;flex-shrink:0;" onclick="saveApiKey()">Save</button>
+          </div>
+        </div>`;
+      messages.appendChild(div);
+      messages.scrollTop=messages.scrollHeight;
+    }
+    return false;
+  }
+  return true;
+}
+
+function saveApiKey(){
+  const input=document.getElementById('apiKeyInput');
+  const key=input?.value?.trim();
+  if(!key||!key.startsWith('sk-ant-')){ alert('Invalid key — should start with sk-ant-'); return; }
+  setAnthropicKey(key);
+  const prompt=document.getElementById('apiKeyPrompt');
+  if(prompt) prompt.remove();
+  appendMsg('ai','API key saved. Ready to go — ask me anything.');
 }
 
 function sendQuick(prompt){ document.getElementById('chatInput').value=prompt; sendChat(); }
 
 async function sendChat(){
+  if(!checkApiKey()) return;
   const input=document.getElementById('chatInput');
   const msg=input.value.trim();
   if(!msg) return;
@@ -1530,11 +1586,12 @@ async function sendChat(){
   const typing=appendTyping();
 
   const context=buildContext();
+  const apiKey=getAnthropicKey();
 
   try {
     const response = await fetch('https://oura-proxy.alex-b-phuong.workers.dev?target=claude',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json','x-api-key':apiKey},
       body:JSON.stringify({
         model:'claude-sonnet-4-20250514',
         max_tokens:1000,
@@ -1683,6 +1740,10 @@ function renderExport(){
   txt+=`\nPROFILE SUMMARY\nWeight: ~80–81kg | Height: 174cm | BF: ~15–20%\nGoals: Strength/power, CrossFit, fertility optimisation (6mo window), hair retention\nActive concerns: Left QL (nerve), finasteride cessation (fertility), THC washout in progress\nKey lifts: Power clean 85kg (near PR), bench ~110kg, pull-ups ~15`;
 
   document.getElementById('exportBody').textContent=txt;
+
+  // Display sync code
+  const codeEl=document.getElementById('syncCodeDisplay');
+  if(codeEl) codeEl.textContent=getSyncCode();
 }
 
 function copyExport(){
@@ -1693,6 +1754,90 @@ function copyExport(){
     btn.classList.add('copied');
     setTimeout(()=>{ btn.textContent='copy'; btn.classList.remove('copied'); },2000);
   });
+}
+
+// ─── CLOUD SYNC ──────────────────────────────────────────────────────────────
+function getSyncCode(){
+  try{
+    let code=localStorage.getItem('hos_sync_code');
+    if(!code){
+      // Generate stable unique sync code: alex-XXXX
+      const chars='ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+      let suffix='';
+      for(let i=0;i<4;i++) suffix+=chars[Math.floor(Math.random()*chars.length)];
+      code=`alex-${suffix}`;
+      localStorage.setItem('hos_sync_code',code);
+    }
+    return code;
+  }catch(e){return 'alex-DEMO';}
+}
+
+function copySyncCode(){
+  const code=getSyncCode();
+  navigator.clipboard.writeText(code).then(()=>{
+    const btn=document.getElementById('syncCopyBtn');
+    btn.textContent='copied ✓';
+    btn.classList.add('copied');
+    setTimeout(()=>{ btn.textContent='copy'; btn.classList.remove('copied'); },2000);
+  });
+}
+
+async function syncToCloud(){
+  const code=getSyncCode();
+  const btn=document.getElementById('syncBtn');
+  const status=document.getElementById('syncStatus');
+  btn.disabled=true;
+  btn.textContent='Syncing...';
+
+  const payload={
+    sync_code: code,
+    synced_at: new Date().toISOString(),
+    date: new Date().toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',year:'numeric'}),
+    profile: {
+      name: 'Alex',
+      location: 'Melbourne, Australia',
+      stats: '~80-81kg, 174cm, ~15-20% BF',
+      goals: 'Strength/power, CrossFit, fertility (6mo window), hair retention, longevity',
+      recent_PRs: 'Power clean 85kg, bench ~110kg, pull-ups ~15',
+      medical_flags: 'Left QL (possible nerve), reconstructed ACL, borderline cholesterol, gout history',
+      active_concerns: 'Finasteride cessation in progress (fertility), THC washout complete, hair protocol active',
+    },
+    today: {
+      day_index: todayIdx,
+      day_name: DAYNAMES[todayIdx],
+      day_meta: DAY_META[todayIdx],
+    },
+    oura: ouraData[new Date().toDateString()] || null,
+    workouts: workouts,
+    checklist_state: state,
+    sync_code_explainer: 'This sync code identifies Alex\'s health data. Use sync-read endpoint with this key to retrieve.',
+  };
+
+  try {
+    const res = await fetch(`https://oura-proxy.alex-b-phuong.workers.dev?target=sync-write`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-sync-key':code},
+      body: JSON.stringify(payload),
+    });
+    if(!res.ok) throw new Error('Sync failed: '+res.status);
+    btn.textContent='✓ Synced Successfully';
+    btn.style.background='var(--teal)';
+    status.innerHTML=`<span style="color:var(--teal);">Synced at ${new Date().toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'})}</span><br>Tell Claude: <strong style="color:var(--lime);">"Load my Health OS data, sync code is ${code}"</strong>`;
+    setTimeout(()=>{
+      btn.disabled=false;
+      btn.textContent='📤 Sync Today\'s Data to Cloud';
+      btn.style.background='';
+    },3000);
+  } catch(err){
+    btn.textContent='✕ Sync Failed';
+    btn.style.background='var(--red)';
+    status.innerHTML=`<span style="color:var(--red);">${err.message}</span>`;
+    setTimeout(()=>{
+      btn.disabled=false;
+      btn.textContent='📤 Sync Today\'s Data to Cloud';
+      btn.style.background='';
+    },3000);
+  }
 }
 
 // ─── RESETS ──────────────────────────────────────────────────────────────────
