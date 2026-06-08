@@ -1,0 +1,1728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alex — Health OS</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Bebas+Neue&family=Karla:wght@300;400;500;600&display=swap');
+
+:root {
+  --bg: #080808;
+  --s1: #101010;
+  --s2: #161616;
+  --s3: #1e1e1e;
+  --border: #252525;
+  --border2: #2f2f2f;
+  --lime: #d4f72e;
+  --teal: #2ef7c4;
+  --purple: #b57bff;
+  --amber: #ffb84d;
+  --red: #ff5252;
+  --blue: #5b9fff;
+  --text: #ebebeb;
+  --dim: #666;
+  --dim2: #888;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Karla', sans-serif;
+  font-size: 14px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Noise overlay */
+body::before {
+  content:'';
+  position:fixed;
+  inset:0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events:none;
+  z-index:0;
+  opacity:0.4;
+}
+
+.app { position:relative; z-index:1; }
+
+/* NAV */
+nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(8,8,8,0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+nav::-webkit-scrollbar { display:none; }
+
+.nav-brand {
+  font-family: 'Bebas Neue', cursive;
+  font-size: 20px;
+  letter-spacing: 2px;
+  color: var(--lime);
+  padding: 14px 16px 14px 0;
+  border-right: 1px solid var(--border);
+  margin-right: 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.nav-tab {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 16px 14px;
+  color: var(--dim);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+}
+.nav-tab:hover { color: var(--text); }
+.nav-tab.active { color: var(--lime); border-bottom-color: var(--lime); }
+
+/* PAGE */
+.page { display:none; padding: 20px 16px 80px; max-width: 680px; margin: 0 auto; }
+.page.active { display:block; }
+
+/* DAY STRIP */
+.day-strip {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 20px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 4px;
+}
+.day-strip::-webkit-scrollbar { display:none; }
+
+.day-pill {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 7px 11px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--s1);
+  color: var(--dim2);
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.day-pill:hover { border-color: var(--border2); color: var(--text); }
+.day-pill.active { background: var(--lime); color: #000; border-color: var(--lime); font-weight: 600; }
+.day-pill.stamp { border-color: var(--purple); }
+.day-pill.stamp.active { background: var(--purple); border-color: var(--purple); }
+.day-pill.today-marker { position: relative; }
+.day-pill.today-marker::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--lime);
+}
+
+/* PROGRESS */
+.progress-wrap {
+  background: var(--s2);
+  border-radius: 2px;
+  height: 2px;
+  margin-bottom: 6px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--lime);
+  border-radius: 2px;
+  transition: width 0.35s ease;
+}
+.progress-meta {
+  display: flex;
+  justify-content: space-between;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--dim);
+  margin-bottom: 20px;
+}
+
+/* SECTION */
+.section { margin-bottom: 22px; }
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.section-title {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--dim);
+  white-space: nowrap;
+}
+.section-rule { flex:1; height:1px; background: var(--border); }
+.badge {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  padding: 2px 7px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.b-lime { background: rgba(212,247,46,0.1); color: var(--lime); border:1px solid rgba(212,247,46,0.2); }
+.b-teal { background: rgba(46,247,196,0.1); color: var(--teal); border:1px solid rgba(46,247,196,0.2); }
+.b-purple { background: rgba(181,123,255,0.1); color: var(--purple); border:1px solid rgba(181,123,255,0.2); }
+.b-amber { background: rgba(255,184,77,0.1); color: var(--amber); border:1px solid rgba(255,184,77,0.2); }
+.b-red { background: rgba(255,82,82,0.1); color: var(--red); border:1px solid rgba(255,82,82,0.2); }
+.b-blue { background: rgba(91,159,255,0.1); color: var(--blue); border:1px solid rgba(91,159,255,0.2); }
+
+/* CHECK ITEMS */
+.check-list { display:flex; flex-direction:column; gap:6px; }
+
+.ci {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 11px 13px;
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.12s;
+  user-select: none;
+}
+.ci:hover { background: var(--s2); border-color: var(--border2); }
+.ci.done { opacity: 0.38; }
+.ci.done .ci-label { text-decoration: line-through; color: var(--dim); }
+
+.ci-box {
+  width: 17px; height: 17px;
+  border: 1.5px solid var(--border2);
+  border-radius: 3px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s;
+}
+.ci.done .ci-box { background: var(--lime); border-color: var(--lime); }
+
+.ci-label { font-size: 13px; line-height: 1.4; }
+.ci-note { font-size: 11px; color: var(--dim2); margin-top: 3px; line-height: 1.5; font-family: 'DM Mono', monospace; }
+
+.info-card {
+  padding: 11px 13px;
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--dim2);
+  line-height: 1.6;
+  font-family: 'DM Mono', monospace;
+}
+
+.alert {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 1.6;
+  margin-bottom: 18px;
+  font-family: 'DM Mono', monospace;
+}
+.alert-purple { background: rgba(181,123,255,0.07); border:1px solid rgba(181,123,255,0.2); color: var(--purple); }
+.alert-amber { background: rgba(255,184,77,0.07); border:1px solid rgba(255,184,77,0.18); color: var(--amber); }
+
+/* WORKOUT LOG */
+.workout-area {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.workout-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+.wt-btn {
+  flex: 1;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 9px;
+  background: none;
+  border: none;
+  color: var(--dim);
+  cursor: pointer;
+  transition: all 0.15s;
+  border-bottom: 2px solid transparent;
+}
+.wt-btn.active { color: var(--lime); border-bottom-color: var(--lime); }
+
+.workout-panel { display:none; padding: 14px; }
+.workout-panel.active { display:block; }
+
+.wo-input {
+  width: 100%;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'Karla', sans-serif;
+  font-size: 13px;
+  padding: 10px 12px;
+  border-radius: 5px;
+  resize: vertical;
+  min-height: 80px;
+  outline: none;
+  transition: border-color 0.15s;
+  line-height: 1.5;
+}
+.wo-input:focus { border-color: var(--border2); }
+.wo-input::placeholder { color: var(--dim); }
+
+.wo-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 10px;
+}
+.wo-tag {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  padding: 4px 9px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--s3);
+  color: var(--dim2);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.wo-tag:hover { border-color: var(--border2); color: var(--text); }
+.wo-tag.sel { background: rgba(212,247,46,0.1); border-color: var(--lime); color: var(--lime); }
+
+.wo-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+.wo-metric-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.5px;
+  margin-bottom: 5px;
+}
+.wo-metric-input {
+  width: 100%;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 5px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.wo-metric-input:focus { border-color: var(--border2); }
+
+.save-btn {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 9px 18px;
+  background: var(--lime);
+  color: #000;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-top: 12px;
+  font-weight: 600;
+}
+.save-btn:hover { background: #c8eb20; }
+
+.wo-saved {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.wo-entry {
+  padding: 10px 12px;
+  background: var(--s2);
+  border-radius: 5px;
+  border: 1px solid var(--border);
+}
+.wo-entry-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.wo-entry-type {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--lime);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.wo-entry-del {
+  font-size: 14px;
+  color: var(--dim);
+  cursor: pointer;
+  padding: 0 4px;
+  background: none;
+  border: none;
+  transition: color 0.12s;
+}
+.wo-entry-del:hover { color: var(--red); }
+.wo-entry-notes { font-size: 12px; color: var(--dim2); line-height: 1.5; }
+.wo-entry-metrics {
+  display: flex;
+  gap: 10px;
+  margin-top: 5px;
+  flex-wrap: wrap;
+}
+.wo-metric-chip {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--teal);
+  background: rgba(46,247,196,0.07);
+  padding: 2px 7px;
+  border-radius: 3px;
+}
+
+/* AI CHAT */
+.chat-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--s1);
+  border-radius: 8px 8px 0 0;
+}
+.chat-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--lime);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity:1; }
+  50% { opacity:0.3; }
+}
+.chat-title {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--dim2);
+  text-transform: uppercase;
+}
+.chat-subtitle {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  color: var(--dim);
+  margin-left: auto;
+}
+
+.chat-messages {
+  min-height: 200px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--bg);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.msg {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 88%;
+}
+.msg.user { align-self: flex-end; align-items: flex-end; }
+.msg.ai { align-self: flex-start; }
+
+.msg-bubble {
+  padding: 10px 13px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.msg.user .msg-bubble { background: var(--s3); color: var(--text); }
+.msg.ai .msg-bubble { background: rgba(212,247,46,0.06); border:1px solid rgba(212,247,46,0.12); color: var(--text); }
+
+.msg-sender {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  color: var(--dim);
+  letter-spacing: 0.5px;
+}
+
+.typing-indicator { display:flex; gap:4px; padding: 10px 13px; }
+.typing-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--lime);
+  animation: typing 1.2s infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typing {
+  0%,60%,100% { transform:translateY(0); opacity:0.4; }
+  30% { transform:translateY(-4px); opacity:1; }
+}
+
+.chat-input-wrap {
+  display: flex;
+  gap: 8px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--border);
+  background: var(--s1);
+  border-radius: 0 0 8px 8px;
+}
+.chat-input {
+  flex: 1;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'Karla', sans-serif;
+  font-size: 13px;
+  padding: 9px 12px;
+  border-radius: 5px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.chat-input:focus { border-color: var(--border2); }
+.chat-send {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  padding: 9px 14px;
+  background: var(--lime);
+  color: #000;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.chat-send:hover { background: #c8eb20; }
+.chat-send:disabled { opacity: 0.4; cursor: default; }
+
+.quick-prompts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 10px 14px 0;
+  background: var(--bg);
+}
+.qp-btn {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  padding: 5px 10px;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  color: var(--dim2);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+.qp-btn:hover { border-color: var(--lime); color: var(--lime); }
+
+.chat-container {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* EXPORT */
+.export-card {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+.export-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--dim);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.copy-btn {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  padding: 3px 9px;
+  background: var(--s3);
+  border: 1px solid var(--border2);
+  color: var(--dim2);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.12s;
+  letter-spacing: 0.5px;
+}
+.copy-btn:hover { border-color: var(--lime); color: var(--lime); }
+.copy-btn.copied { border-color: var(--teal); color: var(--teal); }
+
+.export-body {
+  padding: 14px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--dim2);
+  line-height: 1.8;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* RESET */
+.reset-link {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--dim);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+  transition: color 0.12s;
+  display: block;
+  text-align: center;
+  margin-top: 16px;
+  letter-spacing: 0.5px;
+}
+.reset-link:hover { color: var(--red); }
+
+/* WEEK GRID */
+.week-grid {
+  display: grid;
+  grid-template-columns: repeat(7,1fr);
+  gap: 5px;
+  margin-bottom: 10px;
+}
+.wg-cell {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 8px 4px;
+  text-align: center;
+}
+.wg-cell.wg-today { border-color: var(--lime); }
+.wg-name {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--dim);
+}
+.wg-cell.wg-today .wg-name { color: var(--lime); }
+.wg-dots { display:flex; flex-direction:column; gap:3px; align-items:center; margin-top:6px; }
+.wg-dot { width:5px; height:5px; border-radius:50%; }
+
+.oura-placeholder {
+  padding: 20px;
+  text-align: center;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--dim);
+  line-height: 1.8;
+  border: 1px dashed var(--border2);
+  border-radius: 6px;
+}
+.oura-placeholder strong { color: var(--teal); display:block; margin-bottom:8px; font-size:13px; }
+
+.oura-token-wrap {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px;
+}
+.oura-token-title { font-family:'DM Mono',monospace; font-size:11px; color:var(--teal); margin-bottom:6px; letter-spacing:0.5px; }
+.oura-token-desc { font-family:'DM Mono',monospace; font-size:10px; color:var(--dim); line-height:1.7; margin-bottom:12px; }
+.oura-token-desc a { color:var(--teal); }
+.oura-token-row { display:flex; gap:8px; }
+.oura-token-input {
+  flex:1; background:var(--s2); border:1px solid var(--border); color:var(--text);
+  font-family:'DM Mono',monospace; font-size:11px; padding:9px 12px; border-radius:5px;
+  outline:none; transition:border-color 0.15s; letter-spacing:0.5px;
+}
+.oura-token-input:focus { border-color:var(--teal); }
+.oura-metrics-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.oura-metric-card {
+  background:var(--s1); border:1px solid var(--border); border-radius:6px;
+  padding:12px 14px; position:relative; overflow:hidden;
+}
+.oura-metric-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
+.oura-metric-card.readiness::before { background:var(--lime); }
+.oura-metric-card.sleep::before { background:var(--blue); }
+.oura-metric-card.hrv::before { background:var(--teal); }
+.oura-metric-card.rhr::before { background:var(--amber); }
+.oura-metric-card.activity::before { background:var(--purple); }
+.oura-metric-card.temp::before { background:var(--red); }
+.oura-metric-label { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:var(--dim); margin-bottom:6px; }
+.oura-metric-value { font-family:'Bebas Neue',cursive; font-size:32px; letter-spacing:1px; line-height:1; }
+.oura-metric-card.readiness .oura-metric-value { color:var(--lime); }
+.oura-metric-card.sleep .oura-metric-value { color:var(--blue); }
+.oura-metric-card.hrv .oura-metric-value { color:var(--teal); }
+.oura-metric-card.rhr .oura-metric-value { color:var(--amber); }
+.oura-metric-card.activity .oura-metric-value { color:var(--purple); }
+.oura-metric-card.temp .oura-metric-value { color:var(--red); }
+.oura-metric-unit { font-family:'DM Mono',monospace; font-size:10px; color:var(--dim2); margin-top:3px; }
+.oura-metric-sub { font-family:'DM Mono',monospace; font-size:10px; color:var(--dim); margin-top:4px; }
+.oura-error {
+  padding:12px 14px; background:rgba(255,82,82,0.07); border:1px solid rgba(255,82,82,0.2);
+  border-radius:6px; font-family:'DM Mono',monospace; font-size:11px; color:var(--red); line-height:1.6;
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<nav>
+  <div class="nav-brand">HEALTH OS</div>
+  <button class="nav-tab active" onclick="showPage('today')">Today</button>
+  <button class="nav-tab" onclick="showPage('supplements')">Supplements</button>
+  <button class="nav-tab" onclick="showPage('hair')">Hair</button>
+  <button class="nav-tab" onclick="showPage('workout')">Workout</button>
+  <button class="nav-tab" onclick="showPage('advisor')">AI Advisor</button>
+  <button class="nav-tab" onclick="showPage('export')">Export</button>
+</nav>
+
+<!-- TODAY -->
+<div class="page active" id="page-today">
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px; padding-top:4px;">
+    <div>
+      <div style="font-family:'Bebas Neue',cursive; font-size:28px; letter-spacing:2px; color:var(--lime); line-height:1;" id="todayHeading">MONDAY</div>
+      <div style="font-family:'DM Mono',monospace; font-size:10px; color:var(--dim); margin-top:4px;" id="todayDate"></div>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-family:'DM Mono',monospace; font-size:10px; color:var(--dim2);" id="dayTypeBadge"></div>
+    </div>
+  </div>
+
+  <div class="day-strip" id="dayStrip"></div>
+
+  <div class="progress-wrap"><div class="progress-fill" id="todayProgress" style="width:0%"></div></div>
+  <div class="progress-meta"><span id="progressLabel">0 of 0 done</span><span id="progressPct">0%</span></div>
+
+  <div id="alertArea"></div>
+  <div id="todayChecklist"></div>
+  <button class="reset-link" onclick="resetToday()">↺ reset today's checklist</button>
+</div>
+
+<!-- SUPPLEMENTS -->
+<div class="page" id="page-supplements">
+  <div style="font-family:'Bebas Neue',cursive; font-size:24px; letter-spacing:2px; color:var(--amber); margin-bottom:4px; padding-top:4px;">SUPPLEMENTS</div>
+  <div style="font-family:'DM Mono',monospace; font-size:10px; color:var(--dim); margin-bottom:18px;" id="suppDayLabel"></div>
+  <div class="day-strip" id="suppDayStrip"></div>
+  <div id="suppContent"></div>
+  <button class="reset-link" onclick="resetSupps()">↺ reset supplements</button>
+</div>
+
+<!-- HAIR -->
+<div class="page" id="page-hair">
+  <div style="font-family:'Bebas Neue',cursive; font-size:24px; letter-spacing:2px; color:var(--purple); margin-bottom:4px; padding-top:4px;">HAIR PROTOCOL</div>
+  <div style="font-family:'DM Mono',monospace; font-size:10px; color:var(--dim); margin-bottom:18px;" id="hairDayLabel"></div>
+  <div class="day-strip" id="hairDayStrip"></div>
+  <div id="hairContent"></div>
+  <button class="reset-link" onclick="resetHair()">↺ reset hair checklist</button>
+</div>
+
+<!-- WORKOUT -->
+<div class="page" id="page-workout">
+  <div style="font-family:'Bebas Neue',cursive; font-size:24px; letter-spacing:2px; color:var(--teal); margin-bottom:4px; padding-top:4px;">WORKOUT LOG</div>
+  <div style="font-family:'DM Mono',monospace; font-size:10px; color:var(--dim); margin-bottom:18px;" id="woDayLabel"></div>
+  <div class="day-strip" id="woDayStrip"></div>
+  <div id="woContent"></div>
+</div>
+
+<!-- AI ADVISOR -->
+<div class="page" id="page-advisor">
+  <div style="font-family:'Bebas Neue',cursive; font-size:24px; letter-spacing:2px; color:var(--lime); margin-bottom:4px; padding-top:4px;">AI ADVISOR</div>
+  <div style="font-family:'DM Mono',monospace; font-size:10px; color:var(--dim); margin-bottom:18px;">context-aware health & performance coach</div>
+
+  <div class="section">
+    <div class="section-head"><span class="section-title">Oura Ring</span><div class="section-rule"></div><span class="badge b-teal" id="ouraStatusBadge">not connected</span></div>
+    <div id="ouraTokenArea"></div>
+    <div id="ouraDataDisplay" style="display:none;">
+      <div class="oura-metrics-grid" id="ouraMetricsGrid"></div>
+      <div style="display:flex; gap:8px; margin-top:10px; align-items:center;">
+        <button class="save-btn" style="margin-top:0;" onclick="fetchOuraData()">↻ Refresh</button>
+        <button onclick="showTokenInput()" style="font-family:'DM Mono',monospace;font-size:10px;background:none;border:none;color:var(--dim);cursor:pointer;letter-spacing:0.5px;">change token</button>
+      </div>
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);margin-top:8px;" id="ouraLastFetch"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head"><span class="section-title">Ask Your Advisor</span><div class="section-rule"></div></div>
+    <div class="chat-container">
+      <div class="chat-header">
+        <div class="chat-dot"></div>
+        <div class="chat-title">Health Advisor</div>
+        <div class="chat-subtitle" id="chatContextLabel">no context loaded</div>
+      </div>
+      <div class="quick-prompts" id="quickPrompts"></div>
+      <div class="chat-messages" id="chatMessages">
+        <div class="msg ai">
+          <div class="msg-sender">ADVISOR</div>
+          <div class="msg-bubble">G'day Alex. I have your supplement stack, hair protocol, and training history loaded as context. Log your workout and Oura data above for the most relevant advice. What do you want to work through?</div>
+        </div>
+      </div>
+      <div class="chat-input-wrap">
+        <input class="chat-input" id="chatInput" placeholder="Ask anything about training, recovery, supplements, fertility..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}">
+        <button class="chat-send" id="chatSendBtn" onclick="sendChat()">Send</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EXPORT -->
+<div class="page" id="page-export">
+  <div style="font-family:'Bebas Neue',cursive; font-size:24px; letter-spacing:2px; color:var(--blue); margin-bottom:4px; padding-top:4px;">DAILY EXPORT</div>
+  <div style="font-family:'DM Mono',monospace; font-size:10px; color:var(--dim); margin-bottom:18px;">structured summary for pasting into any Claude chat</div>
+
+  <div class="export-card">
+    <div class="export-label">
+      Today's Summary
+      <button class="copy-btn" id="copyBtn" onclick="copyExport()">copy</button>
+    </div>
+    <div class="export-body" id="exportBody"></div>
+  </div>
+
+  <div class="info-card" style="font-size:11px; line-height:1.7;">
+    💡 Paste this into any new Claude chat and ask: <span style="color:var(--lime);">"Based on this data, what should I focus on today?"</span> — or use the built-in AI Advisor tab for real-time responses.
+  </div>
+</div>
+
+</div><!-- end app -->
+
+<script>
+// ─── DATA ───────────────────────────────────────────────────────────────────
+
+const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const DAYNAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+// 0=Sun,1=Mon,2=Tue,3=Wed,4=Thu,5=Fri,6=Sat
+const DAY_META = {
+  0: { type:'rest',    crossfit:false, nizoral:false, redlight:true,  stamp:true,  stimulant:false },
+  1: { type:'office',  crossfit:false, nizoral:true,  redlight:false, stamp:false, stimulant:true  },
+  2: { type:'crossfit',crossfit:true,  nizoral:false, redlight:true,  stamp:false, stimulant:true  },
+  3: { type:'office',  crossfit:false, nizoral:true,  redlight:false, stamp:false, stimulant:true  },
+  4: { type:'crossfit',crossfit:true,  nizoral:false, redlight:true,  stamp:false, stimulant:true  },
+  5: { type:'office',  crossfit:false, nizoral:true,  redlight:false, stamp:false, stimulant:true  },
+  6: { type:'rest',    crossfit:false, nizoral:false, redlight:false, stamp:false, stimulant:false },
+};
+
+// SUPPLEMENT SCHEDULE
+function getSupplements(dayIdx) {
+  const m = DAY_META[dayIdx];
+  const sections = [];
+
+  // Morning
+  const morning = [];
+  if(m.stimulant) morning.push({name:'Prescribed stimulant medication', note:'~8–8:30am · Take first before anything else'});
+  morning.push({name:'Vitamin D3/K2', note:'With breakfast or first meal · Fat soluble'});
+  morning.push({name:'Beef liver capsules', note:'Morning with food'});
+  morning.push({name:'Omega-3s', note:'With food · Fat soluble'});
+  if(m.crossfit) {
+    morning.push({name:'Beta-alanine', note:'Pre-training · ~20–30 min before session'});
+    morning.push({name:'Cordyceps capsule', note:'Pre-training · Timing with beta-alanine'});
+    morning.push({name:'Alpha-GPC', note:'Pre-training · ~30–60 min before'});
+  }
+  morning.push({name:'Creatine 5g', note:'Any time · Consistent daily timing preferred'});
+  sections.push({label:'Morning', badge:'b-lime', badgeText:'morning', items:morning});
+
+  // Midday
+  const noon = [];
+  noon.push({name:'Saffron Affron® 30mg', note:'With fat — MCT oil in coffee or noon meal · Not full cream milk alone'});
+  noon.push({name:'L-theanine', note:'Midday ONLY — not evening · Redundant with sleep stack'});
+  if(!m.crossfit) {
+    noon.push({name:'Alpha-GPC', note:'Non-training days: take at noon'});
+    noon.push({name:'Cordyceps capsule', note:'Non-training days: take at noon'});
+  }
+  noon.push({name:'Ashwagandha KSM-66', note:'Max 600mg while saffron active · Serotonin pathway overlap caution'});
+  noon.push({name:'Lion\'s Mane', note:'With noon meal'});
+  noon.push({name:'Reishi', note:'With noon meal'});
+  noon.push({name:'Taurine', note:'With noon meal'});
+  // Hair supps
+  noon.push({name:'Pumpkin seed oil 400mg', note:'Hair support · With food'});
+  noon.push({name:'Tocotrienol complex 50–100mg', note:'Hair support · Fat soluble'});
+  noon.push({name:'Lysine 1–2g', note:'Hair + keratin support'});
+  noon.push({name:'CoQ10 ubiquinol 200–400mg', note:'Sperm quality + fertility · With food'});
+  sections.push({label:'Noon (eating window opens)', badge:'b-amber', badgeText:'noon', items:noon});
+
+  // Mid-afternoon
+  sections.push({label:'Mid-Afternoon', badge:'b-blue', badgeText:'~3–4pm', items:[
+    {name:'Zinc picolinate', note:'Away from calcium and magnesium · Mid-afternoon timing is key'},
+  ]});
+
+  // Evening
+  const eve = [];
+  eve.push({name:'Magnesium bisglycinate', note:'Evening · Sleep support'});
+  eve.push({name:'Glycine', note:'Evening · Sleep + collagen support'});
+  eve.push({name:'Tart cherry', note:'Evening · Recovery + melatonin precursor'});
+  eve.push({name:'Apigenin', note:'Evening · Sleep quality'});
+  eve.push({name:'Melatonin 0.3mg', note:'RESCUE ONLY — not nightly · Do not combine with gummy on same night'});
+  sections.push({label:'Evening / Pre-Sleep', badge:'b-teal', badgeText:'evening', items:eve});
+
+  return sections;
+}
+
+// HAIR PROTOCOL
+function getHairProtocol(dayIdx) {
+  const m = DAY_META[dayIdx];
+  if(m.stamp) {
+    return {
+      alert: {type:'stamp', text:'🪡 DERMASTAMP DAY — Clean scalp only before stamping. Post-stamp: red light optional, then evening oils only. Resume full protocol tomorrow morning.'},
+      sections:[
+        {label:'Pre-Stamp Morning', badge:'b-purple', badgeText:'morning', items:[
+          {name:'Clean dry scalp — no actives', note:'Stamp on product-free scalp only'},
+          {name:'Dermastamp 1mm — full coverage', note:'Light pressure · 50% overlap · Scalp taut · Methodical grid pattern'},
+          {name:'Red light therapy 10 min', note:'Immediately post-stamp · Aids recovery'},
+        ]},
+        {label:'Evening Only', badge:'b-teal', badgeText:'evening', items:[
+          {name:'Rosemary oil + GHK-Cu copper peptides (mixed)', note:'Apply to scalp together'},
+          {name:'Scalp massage 4 min', note:'After application'},
+          {name:'Topical melatonin 0.1%', note:'After rosemary/GHK-Cu absorbed'},
+        ]},
+      ]
+    };
+  }
+
+  const sections = [];
+  const morning = [];
+  if(m.nizoral) morning.push({name:'Nizoral shampoo', note:'Before other products · Leave 3–5 min · Rinse · Dry scalp fully'});
+  morning.push({name:'Caffeine leave-in serum', note:'Apply first to scalp'});
+  morning.push({name:'Topical cetirizine 1%', note:'Apply with or immediately after caffeine serum'});
+  morning.push({name:'→ Wait 20–30 min (absorption)', note:'Passive — get ready during this time'});
+  morning.push({name:'Minoxidil 5% — morning dose', note:'Dry scalp · Thinning zones'});
+  morning.push({name:'→ Wait 60 min (absorption)', note:'Passive · No oils on top during this window'});
+  morning.push({name:'Scalp massage 4 min', note:'During or after minoxidil · Enhances penetration'});
+  sections.push({label:'Morning', badge:'b-lime', badgeText:'morning', items:morning});
+
+  const evening = [];
+  evening.push({name:'Rosemary oil + GHK-Cu copper peptides (mixed)', note:'Apply to scalp'});
+  evening.push({name:'Scalp massage 4 min', note:'After application'});
+  evening.push({name:'Topical melatonin 0.1%', note:'After rosemary/GHK-Cu absorbed'});
+  evening.push({name:'Minoxidil 5% — evening dose', note:'Separate window from oils · Scalp dry'});
+  sections.push({label:'Evening', badge:'b-teal', badgeText:'evening', items:evening});
+
+  if(m.redlight) {
+    sections.push({label:'Red Light Therapy', badge:'b-red', badgeText:'3x/week', items:[
+      {name:'Red light therapy 10 min', note:'AM or PM · Compatible with all topicals'},
+    ]});
+  }
+
+  return {alert:null, sections};
+}
+
+// ─── STATE ──────────────────────────────────────────────────────────────────
+let todayIdx = new Date().getDay();
+let selDay = { today:todayIdx, supp:todayIdx, hair:todayIdx, wo:todayIdx };
+let state = {};
+let workouts = {};
+let ouraData = {};
+
+function loadState(){
+  try {
+    const s=localStorage.getItem('hos_state'); if(s) state=JSON.parse(s);
+    const w=localStorage.getItem('hos_workouts'); if(w) workouts=JSON.parse(w);
+    const o=localStorage.getItem('hos_oura'); if(o) ouraData=JSON.parse(o);
+  } catch(e){}
+}
+function saveState(){
+  try {
+    localStorage.setItem('hos_state', JSON.stringify(state));
+    localStorage.setItem('hos_workouts', JSON.stringify(workouts));
+    localStorage.setItem('hos_oura', JSON.stringify(ouraData));
+  } catch(e){}
+}
+
+function ck(page,day,idx){ return `${page}_d${day}_i${idx}`; }
+function toggle(page,day,idx,el){
+  const k=ck(page,day,idx);
+  state[k]=!state[k];
+  el.classList.toggle('done',state[k]);
+  el.querySelector('.ci-box').innerHTML = state[k]?'<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5L4 7.5L8.5 2.5" stroke="#000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>':'';
+  saveState();
+  updateProgress(page,day);
+}
+
+function updateProgress(page,day){
+  if(page!=='today') return;
+  const checks = Object.keys(state).filter(k=>k.startsWith(`today_d${day}_`));
+  const totalEls = document.querySelectorAll('#todayChecklist .ci');
+  const total = totalEls.length;
+  const done = Array.from(totalEls).filter(e=>e.classList.contains('done')).length;
+  const pct = total ? Math.round(done/total*100) : 0;
+  const el = document.getElementById('todayProgress');
+  if(el) el.style.width = pct+'%';
+  const lbl = document.getElementById('progressLabel');
+  if(lbl) lbl.textContent = `${done} of ${total} done`;
+  const p = document.getElementById('progressPct');
+  if(p) p.textContent = pct+'%';
+}
+
+// ─── RENDER HELPERS ─────────────────────────────────────────────────────────
+function renderDayStrip(containerId, page, onSelect){
+  const el=document.getElementById(containerId);
+  el.innerHTML=DAYS.map((d,i)=>{
+    const m=DAY_META[i];
+    const isSel=selDay[page]===i;
+    const isToday=i===todayIdx;
+    return `<button class="day-pill ${m.stamp?'stamp':''} ${isSel?'active':''} ${isToday?'today-marker':''}"
+      onclick="selectDay('${page}',${i})">${d}${isToday?' ●':''}</button>`;
+  }).join('');
+}
+
+function selectDay(page,idx){
+  selDay[page]=idx;
+  renderPage(page);
+}
+
+function renderSections(sections, page, dayIdx, containerId){
+  const el=document.getElementById(containerId);
+  let html='';
+  let gIdx=0;
+  sections.forEach(sec=>{
+    html+=`<div class="section"><div class="section-head"><span class="section-title">${sec.label}</span><div class="section-rule"></div><span class="badge ${sec.badge}">${sec.badgeText}</span></div><div class="check-list">`;
+    sec.items.forEach(item=>{
+      const k=ck(page,dayIdx,gIdx);
+      const done=!!state[k];
+      html+=`<div class="ci ${done?'done':''}" onclick="toggle('${page}',${dayIdx},${gIdx},this)">
+        <div class="ci-box">${done?'<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5L4 7.5L8.5 2.5" stroke="#000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>':''}</div>
+        <div><div class="ci-label">${item.name}</div>${item.note?`<div class="ci-note">${item.note}</div>`:''}</div>
+      </div>`;
+      gIdx++;
+    });
+    html+=`</div></div>`;
+  });
+  el.innerHTML=html;
+}
+
+// ─── PAGE RENDERERS ─────────────────────────────────────────────────────────
+function renderPage(page){
+  if(page==='today') renderToday();
+  if(page==='supplements') renderSupplements();
+  if(page==='hair') renderHair();
+  if(page==='workout') renderWorkout();
+  if(page==='advisor') renderAdvisor();
+  if(page==='export') renderExport();
+}
+
+function renderToday(){
+  const d=selDay.today;
+  const m=DAY_META[d];
+  const hd=document.getElementById('todayHeading');
+  if(hd) hd.textContent=DAYNAMES[d];
+  const dd=document.getElementById('todayDate');
+  const now=new Date();
+  if(dd) dd.textContent=now.toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).split(',').slice(1).join(',').trim();
+  const dt=document.getElementById('dayTypeBadge');
+  if(dt){
+    const labels={'rest':'Rest Day','office':'Office Day','crossfit':'CrossFit Day'};
+    dt.innerHTML=`<span class="badge ${m.crossfit?'b-teal':m.stimulant?'b-lime':'b-purple'}">${labels[m.type]||m.type}${m.stimulant?' · Stimulant':'·No stimulant'}</span>`;
+  }
+  renderDayStrip('dayStrip','today');
+
+  // Alert
+  const aa=document.getElementById('alertArea');
+  if(m.stamp && d===selDay.today){
+    aa.innerHTML=`<div class="alert alert-purple"><span>⚠️</span><span>Dermastamp day — see Hair tab for full protocol. No actives on scalp before stamping.</span></div>`;
+  } else {
+    aa.innerHTML='';
+  }
+
+  // Combined today checklist: key morning supps + hair morning
+  const hair=getHairProtocol(d);
+  const allSections=[];
+
+  // Stimulant reminder
+  if(m.stimulant){
+    allSections.push({label:'First Thing', badge:'b-red', badgeText:'~8am', items:[
+      {name:'Prescribed stimulant medication', note:'Take before food · Sets the window for the day'},
+    ]});
+  }
+
+  // Hair morning (abbreviated)
+  if(!m.stamp){
+    const hm=hair.sections.find(s=>s.label==='Morning');
+    if(hm) allSections.push({...hm, label:'Hair — Morning'});
+  } else {
+    allSections.push({label:'Hair — Dermastamp', badge:'b-purple', badgeText:'today', items:[
+      {name:'See Hair tab for full dermastamp protocol', note:'Clean scalp · Stamp · Red light · Evening oils only'},
+    ]});
+  }
+
+  // Noon key items
+  allSections.push({label:'Noon', badge:'b-amber', badgeText:'eating window', items:[
+    {name:'Saffron 30mg with fat (MCT oil or meal)', note:'Not full cream milk alone'},
+    {name:'Ashwagandha KSM-66', note:'Max 600mg · Noon timing'},
+    {name:'Hair supplements (pumpkin seed, tocotrienols, lysine, CoQ10)', note:'See Supplements tab for full list'},
+  ]});
+
+  // Mid-afternoon
+  allSections.push({label:'Mid-Afternoon', badge:'b-blue', badgeText:'~3–4pm', items:[
+    {name:'Zinc picolinate', note:'Away from calcium and magnesium'},
+  ]});
+
+  // Hair evening
+  const he=hair.sections.find(s=>s.label==='Evening'||s.label==='Evening Only');
+  if(he) allSections.push({...he, label:'Hair — Evening'});
+
+  // Evening supplements
+  allSections.push({label:'Pre-Sleep', badge:'b-teal', badgeText:'evening', items:[
+    {name:'Magnesium bisglycinate', note:''},
+    {name:'Glycine + Tart cherry + Apigenin', note:'Sleep stack'},
+    {name:'Melatonin 0.3mg if needed', note:'Rescue only · Not nightly'},
+  ]});
+
+  // Red light
+  if(m.redlight){
+    allSections.push({label:'Red Light Therapy', badge:'b-red', badgeText:'today', items:[
+      {name:'Red light therapy 10 min', note:'AM or PM · 3x/week schedule'},
+    ]});
+  }
+
+  renderSections(allSections,'today',d,'todayChecklist');
+  updateProgress('today',d);
+}
+
+function renderSupplements(){
+  const d=selDay.supp;
+  const lbl=document.getElementById('suppDayLabel');
+  if(lbl) lbl.textContent=DAYNAMES[d]+' — '+['Rest','Office','CrossFit','Office','CrossFit','Office','Rest'][d]+' Day';
+  renderDayStrip('suppDayStrip','supp');
+  renderSections(getSupplements(d),'supp',d,'suppContent');
+}
+
+function renderHair(){
+  const d=selDay.hair;
+  const lbl=document.getElementById('hairDayLabel');
+  if(lbl) lbl.textContent=DAYNAMES[d]+(DAY_META[d].stamp?' — DERMASTAMP':'');
+  renderDayStrip('hairDayStrip','hair');
+  const proto=getHairProtocol(d);
+  const aa=document.getElementById('alertArea');
+  if(proto.alert){
+    document.getElementById('hairContent').innerHTML=`<div class="alert alert-purple"><span>⚠️</span><span>${proto.alert.text}</span></div>`;
+  } else {
+    document.getElementById('hairContent').innerHTML='';
+  }
+  renderSections(proto.sections,'hair',d,'hairContent');
+}
+
+// ─── WORKOUT ─────────────────────────────────────────────────────────────────
+const WO_TYPES=['CrossFit','Olympic Lifting','Running','Boxing','Strength','Rehab/Prehab','Rest/Recovery','Other'];
+let woSelTypes=[];
+let woSelDay=null;
+
+function renderWorkout(){
+  const d=selDay.wo;
+  woSelDay=d;
+  const lbl=document.getElementById('woDayLabel');
+  if(lbl) lbl.textContent=DAYNAMES[d];
+  renderDayStrip('woDayStrip','wo');
+
+  const saved=(workouts[d]||[]);
+  let html=`<div class="workout-area">
+    <div class="workout-tabs">
+      <button class="wt-btn active" onclick="woTab('log',this)">Log Workout</button>
+      <button class="wt-btn" onclick="woTab('history',this)">History</button>
+    </div>
+    <div class="workout-panel active" id="woLog">
+      <div class="wo-metric-label" style="margin-bottom:8px;">Workout Type</div>
+      <div class="wo-tags" id="woTypeTags">
+        ${WO_TYPES.map(t=>`<div class="wo-tag ${woSelTypes.includes(t)?'sel':''}" onclick="toggleWoType('${t}',this)">${t}</div>`).join('')}
+      </div>
+      <div style="margin-top:12px;">
+        <div class="wo-metric-label" style="margin-bottom:6px;">Notes / Details</div>
+        <textarea class="wo-input" id="woNotes" placeholder="e.g. Power clean 82.5kg x3, Fran 4:20, 5k @ 5:15/km..."></textarea>
+      </div>
+      <div class="wo-metrics">
+        <div>
+          <div class="wo-metric-label">Duration (min)</div>
+          <input class="wo-metric-input" id="woDuration" type="number" placeholder="e.g. 60">
+        </div>
+        <div>
+          <div class="wo-metric-label">RPE (1–10)</div>
+          <input class="wo-metric-input" id="woRPE" type="number" min="1" max="10" placeholder="e.g. 7">
+        </div>
+        <div>
+          <div class="wo-metric-label">Key Lift / Score</div>
+          <input class="wo-metric-input" id="woLift" type="text" placeholder="e.g. PC 82.5kg">
+        </div>
+        <div>
+          <div class="wo-metric-label">Bodyweight (kg)</div>
+          <input class="wo-metric-input" id="woBW" type="number" placeholder="e.g. 81">
+        </div>
+      </div>
+      <button class="save-btn" onclick="saveWorkout()">Save Workout</button>
+    </div>
+    <div class="workout-panel" id="woHistory">
+      <div class="wo-saved" id="woSavedList">
+        ${saved.length===0?'<div class="info-card" style="text-align:center;">No workouts logged for '+DAYNAMES[d]+'</div>':''}
+        ${saved.map((w,i)=>renderWoEntry(w,d,i)).join('')}
+      </div>
+    </div>
+  </div>`;
+  document.getElementById('woContent').innerHTML=html;
+  woSelTypes=[];
+}
+
+function renderWoEntry(w,d,i){
+  return `<div class="wo-entry">
+    <div class="wo-entry-head">
+      <div class="wo-entry-type">${w.types.join(' + ')||'Workout'}</div>
+      <button class="wo-entry-del" onclick="deleteWorkout(${d},${i})">✕</button>
+    </div>
+    ${w.notes?`<div class="wo-entry-notes">${w.notes}</div>`:''}
+    <div class="wo-entry-metrics">
+      ${w.duration?`<span class="wo-metric-chip">⏱ ${w.duration}min</span>`:''}
+      ${w.rpe?`<span class="wo-metric-chip">RPE ${w.rpe}/10</span>`:''}
+      ${w.lift?`<span class="wo-metric-chip">🏋️ ${w.lift}</span>`:''}
+      ${w.bw?`<span class="wo-metric-chip">⚖️ ${w.bw}kg</span>`:''}
+    </div>
+  </div>`;
+}
+
+function woTab(tab,btn){
+  document.querySelectorAll('.wt-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('woLog').classList.toggle('active',tab==='log');
+  document.getElementById('woHistory').classList.toggle('active',tab==='history');
+}
+
+function toggleWoType(t,el){
+  if(woSelTypes.includes(t)) woSelTypes=woSelTypes.filter(x=>x!==t);
+  else woSelTypes.push(t);
+  el.classList.toggle('sel',woSelTypes.includes(t));
+}
+
+function saveWorkout(){
+  const d=selDay.wo;
+  const entry={
+    types:[...woSelTypes],
+    notes:document.getElementById('woNotes').value.trim(),
+    duration:document.getElementById('woDuration').value,
+    rpe:document.getElementById('woRPE').value,
+    lift:document.getElementById('woLift').value.trim(),
+    bw:document.getElementById('woBW').value,
+    timestamp:new Date().toISOString()
+  };
+  if(!entry.types.length && !entry.notes){ alert('Add a workout type or notes first.'); return; }
+  if(!workouts[d]) workouts[d]=[];
+  workouts[d].push(entry);
+  saveState();
+  renderWorkout();
+  // Switch to history
+  setTimeout(()=>{
+    const btns=document.querySelectorAll('.wt-btn');
+    if(btns[1]) woTab('history',btns[1]);
+  },100);
+}
+
+function deleteWorkout(d,i){
+  workouts[d].splice(i,1);
+  saveState();
+  renderWorkout();
+}
+
+// ─── OURA ────────────────────────────────────────────────────────────────────
+// ─── OURA API ────────────────────────────────────────────────────────────────
+function getOuraToken(){ try{ return localStorage.getItem('hos_oura_token')||''; }catch(e){return '';} }
+function setOuraToken(t){ try{ localStorage.setItem('hos_oura_token',t); }catch(e){} }
+
+function showTokenInput(){
+  const existing=getOuraToken();
+  const ta=document.getElementById('ouraTokenArea');
+  const dd=document.getElementById('ouraDataDisplay');
+  if(ta) ta.style.display='block';
+  if(dd) dd.style.display='none';
+  if(ta) ta.innerHTML=`
+    <div class="oura-token-wrap">
+      <div class="oura-token-title">📡 Connect Oura Ring</div>
+      <div class="oura-token-desc">
+        1. Go to <a href="https://cloud.ouraring.com/personal-access-tokens" target="_blank">cloud.ouraring.com/personal-access-tokens</a><br>
+        2. Click <strong>Create New Personal Access Token</strong><br>
+        3. Copy and paste it below — saved locally, never leaves your device
+      </div>
+      <div class="oura-token-row">
+        <input class="oura-token-input" id="ouraTokenInput" type="password" placeholder="paste token here..." value="${existing}">
+        <button class="save-btn" style="margin-top:0;" onclick="connectOura()">Connect</button>
+      </div>
+    </div>`;
+}
+
+async function connectOura(){
+  const input=document.getElementById('ouraTokenInput');
+  const token=input?.value?.trim();
+  if(!token){ alert('Paste your Oura personal access token first.'); return; }
+  setOuraToken(token);
+  await fetchOuraData();
+}
+
+async function fetchOuraData(){
+  const token=getOuraToken();
+  if(!token){ showTokenInput(); return; }
+
+  const badge=document.getElementById('ouraStatusBadge');
+  if(badge){ badge.textContent='fetching...'; badge.className='badge b-amber'; }
+
+  const today=new Date().toISOString().split('T')[0];
+  const yesterday=new Date(Date.now()-86400000).toISOString().split('T')[0];
+
+  try {
+    const headers={'Authorization':`Bearer ${token}`};
+
+    // Fetch readiness, sleep, and activity in parallel
+    const [readinessRes, sleepRes, activityRes] = await Promise.all([
+      fetch(`https://api.ouraring.com/v2/usercollection/daily_readiness?start_date=${today}&end_date=${today}`,{headers}),
+      fetch(`https://api.ouraring.com/v2/usercollection/daily_sleep?start_date=${today}&end_date=${today}`,{headers}),
+      fetch(`https://api.ouraring.com/v2/usercollection/daily_activity?start_date=${today}&end_date=${today}`,{headers}),
+    ]);
+
+    if(!readinessRes.ok){
+      const errText = await readinessRes.text();
+      throw new Error(readinessRes.status===401?'Invalid token — check and re-enter':`API error ${readinessRes.status}`);
+    }
+
+    const [readinessData, sleepData, activityData] = await Promise.all([
+      readinessRes.json(), sleepRes.json(), activityRes.json()
+    ]);
+
+    // Extract values — fall back to yesterday if today not synced yet
+    let r=readinessData.data?.[0];
+    let s=sleepData.data?.[0];
+    let a=activityData.data?.[0];
+
+    // If today's data missing (ring not synced yet), try yesterday
+    if(!r||!s){
+      const [r2,s2,a2]=await Promise.all([
+        fetch(`https://api.ouraring.com/v2/usercollection/daily_readiness?start_date=${yesterday}&end_date=${yesterday}`,{headers}).then(x=>x.json()),
+        fetch(`https://api.ouraring.com/v2/usercollection/daily_sleep?start_date=${yesterday}&end_date=${yesterday}`,{headers}).then(x=>x.json()),
+        fetch(`https://api.ouraring.com/v2/usercollection/daily_activity?start_date=${yesterday}&end_date=${yesterday}`,{headers}).then(x=>x.json()),
+      ]);
+      if(!r) r=r2.data?.[0];
+      if(!s) s=s2.data?.[0];
+      if(!a) a=a2.data?.[0];
+    }
+
+    const parsed={
+      readiness: r?.score??null,
+      readiness_contributors: r?.contributors??{},
+      sleep: s?.score??null,
+      total_sleep_h: s?.contributors?.total_sleep!=null ? Math.round(s.contributors.total_sleep/36)/100 : null,
+      hrv: r?.contributors?.hrv_balance??s?.average_hrv??null,
+      rhr: r?.contributors?.resting_heart_rate??null,
+      temp_deviation: s?.temperature_deviation??null,
+      activity_score: a?.score??null,
+      steps: a?.steps??null,
+      fetched: new Date().toISOString(),
+      date_label: r ? (r.day===today?'today':'yesterday') : 'unknown',
+    };
+
+    const todayKey=new Date().toDateString();
+    ouraData[todayKey]=parsed;
+    saveState();
+
+    if(badge){ badge.textContent='connected'; badge.className='badge b-teal'; }
+    renderOuraDisplay(parsed);
+    updateChatContextLabel();
+
+  } catch(err){
+    if(badge){ badge.textContent='error'; badge.className='badge b-red'; }
+    const ta=document.getElementById('ouraTokenArea');
+    const dd=document.getElementById('ouraDataDisplay');
+    if(dd) dd.style.display='none';
+    if(ta){
+      ta.style.display='block';
+      ta.innerHTML=`<div class="oura-error">⚠️ ${err.message}<br><br>
+        <span style="color:var(--dim);">Check your token is correct and your Oura ring has synced recently.</span><br><br>
+        <button onclick="showTokenInput()" style="font-family:'DM Mono',monospace;font-size:10px;background:none;border:1px solid var(--red);color:var(--red);padding:5px 12px;border-radius:4px;cursor:pointer;">Re-enter Token</button>
+      </div>`;
+    }
+  }
+}
+
+function renderOuraDisplay(o){
+  const ta=document.getElementById('ouraTokenArea');
+  const dd=document.getElementById('ouraDataDisplay');
+  if(ta) ta.style.display='none';
+  if(!dd) return;
+  dd.style.display='block';
+
+  function scoreColor(score){
+    if(score>=85) return 'var(--lime)';
+    if(score>=70) return 'var(--amber)';
+    return 'var(--red)';
+  }
+  function scoreLabel(score){
+    if(score==null) return '—';
+    if(score>=85) return 'Optimal';
+    if(score>=70) return 'Good';
+    return 'Pay attention';
+  }
+
+  const grid=document.getElementById('ouraMetricsGrid');
+  const cards=[];
+
+  if(o.readiness!=null) cards.push(`
+    <div class="oura-metric-card readiness">
+      <div class="oura-metric-label">Readiness</div>
+      <div class="oura-metric-value" style="color:${scoreColor(o.readiness)}">${o.readiness}</div>
+      <div class="oura-metric-unit">/100</div>
+      <div class="oura-metric-sub">${scoreLabel(o.readiness)}</div>
+    </div>`);
+
+  if(o.sleep!=null) cards.push(`
+    <div class="oura-metric-card sleep">
+      <div class="oura-metric-label">Sleep Score</div>
+      <div class="oura-metric-value" style="color:${scoreColor(o.sleep)}">${o.sleep}</div>
+      <div class="oura-metric-unit">/100${o.total_sleep_h?` · ${o.total_sleep_h}h`:''}</div>
+      <div class="oura-metric-sub">${scoreLabel(o.sleep)}</div>
+    </div>`);
+
+  if(o.hrv!=null) cards.push(`
+    <div class="oura-metric-card hrv">
+      <div class="oura-metric-label">HRV</div>
+      <div class="oura-metric-value">${o.hrv}</div>
+      <div class="oura-metric-unit">ms avg</div>
+      <div class="oura-metric-sub">Balance contributor</div>
+    </div>`);
+
+  if(o.rhr!=null) cards.push(`
+    <div class="oura-metric-card rhr">
+      <div class="oura-metric-label">Resting HR</div>
+      <div class="oura-metric-value">${o.rhr}</div>
+      <div class="oura-metric-unit">bpm</div>
+      <div class="oura-metric-sub">Overnight avg</div>
+    </div>`);
+
+  if(o.activity_score!=null) cards.push(`
+    <div class="oura-metric-card activity">
+      <div class="oura-metric-label">Activity</div>
+      <div class="oura-metric-value" style="color:${scoreColor(o.activity_score)}">${o.activity_score}</div>
+      <div class="oura-metric-unit">/100${o.steps?` · ${o.steps.toLocaleString()} steps`:''}</div>
+      <div class="oura-metric-sub">${scoreLabel(o.activity_score)}</div>
+    </div>`);
+
+  if(o.temp_deviation!=null) cards.push(`
+    <div class="oura-metric-card temp">
+      <div class="oura-metric-label">Temp Deviation</div>
+      <div class="oura-metric-value" style="font-size:24px;">${o.temp_deviation>0?'+':''}${o.temp_deviation.toFixed(2)}</div>
+      <div class="oura-metric-unit">°C from baseline</div>
+      <div class="oura-metric-sub">${Math.abs(o.temp_deviation)<0.5?'Normal':'Notable deviation'}</div>
+    </div>`);
+
+  if(grid) grid.innerHTML=cards.join('');
+
+  const lf=document.getElementById('ouraLastFetch');
+  if(lf){
+    const t=new Date(o.fetched);
+    lf.textContent=`last synced ${t.toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit'})} · data from ${o.date_label}`;
+  }
+}
+
+function initOura(){
+  const token=getOuraToken();
+  const todayKey=new Date().toDateString();
+  const cached=ouraData[todayKey];
+  if(token && cached && cached.readiness!=null){
+    // Show cached data immediately, then refresh in background
+    const badge=document.getElementById('ouraStatusBadge');
+    if(badge){ badge.textContent='connected'; badge.className='badge b-teal'; }
+    renderOuraDisplay(cached);
+    updateChatContextLabel();
+    fetchOuraData(); // silent refresh
+  } else if(token){
+    fetchOuraData();
+  } else {
+    showTokenInput();
+  }
+}
+
+function updateChatContextLabel(){
+  const todayKey=new Date().toDateString();
+  const o=ouraData[todayKey];
+  const lbl=document.getElementById('chatContextLabel');
+  if(!lbl) return;
+  const d=selDay.wo||todayIdx;
+  const wo=workouts[d]||[];
+  const parts=[];
+  if(o && o.readiness!=null) parts.push(`readiness ${o.readiness}`);
+  if(o && o.hrv!=null) parts.push(`HRV ${o.hrv}`);
+  if(wo.length) parts.push(`${wo.length} workout(s)`);
+  lbl.textContent = parts.length ? parts.join(' · ') : 'no context loaded';
+}
+
+// ─── AI ADVISOR ──────────────────────────────────────────────────────────────
+const QUICK_PROMPTS=[
+  'Should I train today?',
+  'Optimise my supplement timing',
+  'Review my hair protocol',
+  'Fertility check-in',
+  'Recovery advice',
+  'Pre-workout nutrition',
+];
+
+function renderAdvisor(){
+  const qp=document.getElementById('quickPrompts');
+  if(qp) qp.innerHTML=QUICK_PROMPTS.map(p=>`<button class="qp-btn" onclick="sendQuick('${p}')">${p}</button>`).join('');
+  initOura();
+}
+
+function sendQuick(prompt){ document.getElementById('chatInput').value=prompt; sendChat(); }
+
+async function sendChat(){
+  const input=document.getElementById('chatInput');
+  const msg=input.value.trim();
+  if(!msg) return;
+  input.value='';
+  const sendBtn=document.getElementById('chatSendBtn');
+  sendBtn.disabled=true;
+
+  appendMsg('user',msg);
+  const typing=appendTyping();
+
+  const context=buildContext();
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        system:`You are Alex's personal health, fitness, fertility, and wellbeing advisor. You have deep knowledge of his full profile and respond with direct, evidence-based, practical advice — no hedging, no generic answers.
+
+ALEX'S PROFILE:
+- Age range: early–mid 30s, Melbourne Australia
+- Weight: ~80–81kg, 174cm, ~15–20% body fat
+- Goals: strength/power (Olympic lifting, CrossFit), body recomposition, male fertility optimisation (actively trying within 6 months), hair retention, longevity
+- Training: CrossFit Tue/Thu, running, moving toward boxing
+- Medical: reconstructed ACL (left), chronic left QL (possible nerve involvement — avoid axial loading), chronically tight traps/thoracic, borderline high cholesterol, history of gout, borderline high cholesterol
+- Medication: prescribed stimulant Mon–Fri ~8:30am (suppresses appetite until noon)
+- Recent PR: 85kg power clean. Bench ~110kg. Pull-ups ~15 unbraced.
+- Hair: on oral finasteride 1mg for 2–3 years, actively transitioning off for fertility. Running full hair protocol (minoxidil 2x, dermastamp weekly 1mm, red light 3x, nizoral, cetirizine topical, rosemary+GHK-Cu, topical melatonin, caffeine serum)
+- Fertility: stopped THC gummies, washout in progress. Semen analysis pending. CoQ10 added for sperm quality.
+- Supplements: comprehensive stack including creatine, omega-3s, D3/K2, magnesium bisglycinate, zinc picolinate, ashwagandha KSM-66 (max 600mg), saffron Affron 30mg, alpha-GPC, L-theanine (midday only), glycine, tart cherry, apigenin, beef liver, lion's mane, cordyceps, reishi, taurine, melatonin rescue-only 0.3mg, beta-alanine (training days), CoQ10 ubiquinol, pumpkin seed oil, tocotrienols, lysine
+- Key interaction risk: stimulant + saffron + ashwagandha + (previously) CBD — serotonin pathway overlap. Saffron is first to drop if symptoms emerge.
+- Nutrition: animal-based protein preferred, low phytoestrogen, low purine. Protein target 155–165g. Calorie cycling by day type. Eating window opens ~noon.
+- Tools: Oura Ring, Ninja Creami, MyFitnessPal
+
+TODAY'S LOGGED DATA:
+${context}
+
+Respond concisely and directly. If Oura data is present, factor it into recovery and training advice. Reference specific supplements, lifts, or protocol details when relevant. Never be generic.`,
+        messages:[{role:'user',content:msg}]
+      })
+    });
+    const data=await response.json();
+    removeTyping(typing);
+    const text=data.content?.find(c=>c.type==='text')?.text||'Unable to get a response. Check your connection.';
+    appendMsg('ai',text);
+  } catch(e){
+    removeTyping(typing);
+    appendMsg('ai','Connection error. Try again or use the Export tab to copy your data for a new Claude chat.');
+  }
+  sendBtn.disabled=false;
+}
+
+function buildContext(){
+  const d=selDay.today;
+  const m=DAY_META[d];
+  const todayKey=new Date().toDateString();
+  const o=ouraData[todayKey]||{};
+  const wo=workouts[d]||[];
+  const lines=[];
+  lines.push(`Day: ${DAYNAMES[d]} (${m.type}${m.stimulant?', stimulant day':''}${m.crossfit?', CrossFit day':''}${m.stamp?', dermastamp day':''})`);
+  if(o.readiness!=null) lines.push(`Oura Readiness: ${o.readiness}/100`);
+  if(o.sleep!=null) lines.push(`Oura Sleep Score: ${o.sleep}/100${o.total_sleep_h?` (${o.total_sleep_h}h)`:''}`);
+  if(o.hrv!=null) lines.push(`HRV: ${o.hrv}ms`);
+  if(o.rhr!=null) lines.push(`Resting HR: ${o.rhr}bpm`);
+  if(o.temp_deviation!=null) lines.push(`Body temp deviation: ${o.temp_deviation>0?'+':''}${o.temp_deviation.toFixed(2)}°C`);
+  if(o.activity_score!=null) lines.push(`Activity score: ${o.activity_score}/100${o.steps?` (${o.steps.toLocaleString()} steps)`:''}`);
+  if(wo.length){
+    wo.forEach((w,i)=>{
+      lines.push(`Workout ${i+1}: ${w.types.join('+')}${w.notes?' — '+w.notes:''}${w.rpe?' RPE '+w.rpe:''}${w.lift?' '+w.lift:''}`);
+    });
+  }
+  return lines.length?lines.join('\n'):'No workout or Oura data logged today.';
+}
+
+function appendMsg(role,text){
+  const el=document.getElementById('chatMessages');
+  const div=document.createElement('div');
+  div.className=`msg ${role}`;
+  div.innerHTML=`<div class="msg-sender">${role==='user'?'YOU':'ADVISOR'}</div><div class="msg-bubble">${text.replace(/\n/g,'<br>')}</div>`;
+  el.appendChild(div);
+  el.scrollTop=el.scrollHeight;
+  return div;
+}
+
+function appendTyping(){
+  const el=document.getElementById('chatMessages');
+  const div=document.createElement('div');
+  div.className='msg ai';
+  div.innerHTML=`<div class="msg-sender">ADVISOR</div><div class="msg-bubble"><div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div>`;
+  el.appendChild(div);
+  el.scrollTop=el.scrollHeight;
+  return div;
+}
+
+function removeTyping(el){ if(el && el.parentNode) el.parentNode.removeChild(el); }
+
+// ─── EXPORT ──────────────────────────────────────────────────────────────────
+function renderExport(){
+  const d=selDay.today;
+  const m=DAY_META[d];
+  const todayKey=new Date().toDateString();
+  const o=ouraData[todayKey]||{};
+  const wo=workouts[d]||[];
+  const now=new Date();
+
+  let txt=`HEALTH OS — DAILY EXPORT\n`;
+  txt+=`Date: ${now.toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}\n`;
+  txt+=`Day Type: ${m.type}${m.stimulant?' | stimulant day':''}${m.crossfit?' | CrossFit day':''}${m.stamp?' | dermastamp day':''}\n\n`;
+
+  txt+=`OURA RING DATA\n`;
+  if(o.readiness!=null||o.sleep!=null||o.hrv!=null||o.rhr!=null){
+    if(o.readiness!=null) txt+=`Readiness: ${o.readiness}/100\n`;
+    if(o.sleep!=null) txt+=`Sleep: ${o.sleep}/100${o.total_sleep_h?` (${o.total_sleep_h}h)`:''}\n`;
+    if(o.hrv!=null) txt+=`HRV: ${o.hrv}ms\n`;
+    if(o.rhr!=null) txt+=`Resting HR: ${o.rhr}bpm\n`;
+    if(o.temp_deviation!=null) txt+=`Temp deviation: ${o.temp_deviation>0?'+':''}${o.temp_deviation.toFixed(2)}°C\n`;
+    if(o.activity_score!=null) txt+=`Activity score: ${o.activity_score}/100${o.steps?` (${o.steps.toLocaleString()} steps)`:''}\n`;
+  } else {
+    txt+=`Not synced — connect Oura in AI Advisor tab\n`;
+  }
+
+  txt+=`\nWORKOUT LOG\n`;
+  if(wo.length){
+    wo.forEach((w,i)=>{
+      txt+=`${i+1}. ${w.types.join(' + ')||'Workout'}\n`;
+      if(w.notes) txt+=`   Notes: ${w.notes}\n`;
+      if(w.duration) txt+=`   Duration: ${w.duration}min\n`;
+      if(w.rpe) txt+=`   RPE: ${w.rpe}/10\n`;
+      if(w.lift) txt+=`   Key lift/score: ${w.lift}\n`;
+      if(w.bw) txt+=`   Bodyweight: ${w.bw}kg\n`;
+    });
+  } else {
+    txt+=`No workouts logged\n`;
+  }
+
+  txt+=`\nSUPPLEMENT COMPLIANCE\n`;
+  const suppSecs=getSupplements(d);
+  let suppIdx=0;
+  suppSecs.forEach(sec=>{
+    txt+=`${sec.label}:\n`;
+    sec.items.forEach(item=>{
+      const k=ck('supp',d,suppIdx);
+      txt+=`  [${state[k]?'✓':' '}] ${item.name}\n`;
+      suppIdx++;
+    });
+  });
+
+  txt+=`\nHAIR PROTOCOL COMPLIANCE\n`;
+  const hp=getHairProtocol(d);
+  let hIdx=0;
+  hp.sections.forEach(sec=>{
+    txt+=`${sec.label}:\n`;
+    sec.items.forEach(item=>{
+      const k=ck('hair',d,hIdx);
+      txt+=`  [${state[k]?'✓':' '}] ${item.name}\n`;
+      hIdx++;
+    });
+  });
+
+  txt+=`\nPROFILE SUMMARY\nWeight: ~80–81kg | Height: 174cm | BF: ~15–20%\nGoals: Strength/power, CrossFit, fertility optimisation (6mo window), hair retention\nActive concerns: Left QL (nerve), finasteride cessation (fertility), THC washout in progress\nKey lifts: Power clean 85kg (near PR), bench ~110kg, pull-ups ~15`;
+
+  document.getElementById('exportBody').textContent=txt;
+}
+
+function copyExport(){
+  const txt=document.getElementById('exportBody').textContent;
+  navigator.clipboard.writeText(txt).then(()=>{
+    const btn=document.getElementById('copyBtn');
+    btn.textContent='copied ✓';
+    btn.classList.add('copied');
+    setTimeout(()=>{ btn.textContent='copy'; btn.classList.remove('copied'); },2000);
+  });
+}
+
+// ─── RESETS ──────────────────────────────────────────────────────────────────
+function resetToday(){
+  const d=selDay.today;
+  Object.keys(state).filter(k=>k.startsWith(`today_d${d}_`)).forEach(k=>delete state[k]);
+  saveState(); renderToday();
+}
+function resetSupps(){
+  const d=selDay.supp;
+  Object.keys(state).filter(k=>k.startsWith(`supp_d${d}_`)).forEach(k=>delete state[k]);
+  saveState(); renderSupplements();
+}
+function resetHair(){
+  const d=selDay.hair;
+  Object.keys(state).filter(k=>k.startsWith(`hair_d${d}_`)).forEach(k=>delete state[k]);
+  saveState(); renderHair();
+}
+
+// ─── NAV ─────────────────────────────────────────────────────────────────────
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  event.target.classList.add('active');
+  renderPage(id);
+}
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+loadState();
+renderToday();
+</script>
+</body>
+</html>
